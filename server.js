@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per file
   fileFilter: (_req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp"];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -113,24 +113,28 @@ app.get("/posts/today", (_req, res) => {
 });
 
 // ── POST /add-post ──────────────────────────────────────
-app.post("/add-post", upload.single("image"), (req, res) => {
+app.post("/add-post", upload.array("images", 5), (req, res) => {
   try {
     const { name, profession, wish, date } = req.body;
 
     if (!name || !profession || !wish || !date)
       return res.status(400).json({ success: false, error: "All fields are required." });
-    if (!req.file)
-      return res.status(400).json({ success: false, error: "Image is required." });
+    if (!req.files || req.files.length === 0)
+      return res.status(400).json({ success: false, error: "At least one image is required." });
 
     const data  = readData();
     const newId = data.meta.last_id + 1;
+
+    // Support multiple images — store as array, keep single image field for backwards compat
+    const images = req.files.map(f => `/uploads/${f.filename}`);
 
     const post = {
       id:         newId,
       name:       name.trim(),
       profession: profession.trim(),
       wish:       wish.trim(),
-      image:      `/uploads/${req.file.filename}`,
+      image:      images[0],   // primary image (backwards compat)
+      images:     images,       // all images array
       date,
       views:      0,
       created_at: new Date().toISOString(),
@@ -144,7 +148,7 @@ app.post("/add-post", upload.single("image"), (req, res) => {
     res.json({ success: true, data: post, message: "Post created successfully!" });
   } catch (err) {
     if (err.code === "LIMIT_FILE_SIZE")
-      return res.status(400).json({ success: false, error: "File too large. Max 5 MB." });
+      return res.status(400).json({ success: false, error: "File too large. Max 5 MB each." });
     res.status(500).json({ success: false, error: err.message || "Failed to create post." });
   }
 });
@@ -177,9 +181,14 @@ app.delete("/posts/:id", (req, res) => {
     if (idx === -1)
       return res.status(404).json({ success: false, error: "Post not found." });
 
-    // Delete image file
-    const imgPath = path.join(__dirname, data.posts[idx].image);
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    // Delete all image files
+    const post = data.posts[idx];
+    const allImages = post.images || [post.image];
+    allImages.forEach(imgUrl => {
+      if (!imgUrl) return;
+      const imgPath = path.join(__dirname, imgUrl);
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    });
 
     data.posts.splice(idx, 1);
     data.meta.total = data.posts.length;
@@ -196,13 +205,18 @@ app.delete("/posts/:id", (req, res) => {
 app.post("/generate-wish", async (req, res) => {
   try {
     const { name, profession, tone } = req.body;
+    console.log("[generate-wish] called:", { name, profession, tone });
 
     if (!name || !profession || !tone)
       return res.status(400).json({ success: false, error: "name, profession and tone are required." });
 
     const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-    if (!ANTHROPIC_KEY)
-      return res.status(500).json({ success: false, error: "ANTHROPIC_API_KEY not set on server." });
+    if (!ANTHROPIC_KEY) {
+      console.error("[generate-wish] ANTHROPIC_API_KEY is not set!");
+      return res.status(500).json({ success: false, error: "ANTHROPIC_API_KEY not set on server. Add it in Render → Environment." });
+    }
+
+    console.log("[generate-wish] API key found, calling Anthropic...");
 
     const toneGuide = {
       warm:          "warm, heartfelt, and genuine — like a close friend wishing them",
@@ -228,24 +242,26 @@ Format: ["Wish one here.", "Wish two here.", "Wish three here."]`;
     const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Content-Type":         "application/json",
-        "x-api-key":            ANTHROPIC_KEY,
-        "anthropic-version":    "2023-06-01",
+        "Content-Type":      "application/json",
+        "x-api-key":         ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model:      "claude-opus-4-5",
+        model:      "claude-haiku-4-5",
         max_tokens: 1024,
         messages:   [{ role: "user", content: prompt }],
       }),
     });
 
+    const apiText = await apiRes.text();
+    console.log("[generate-wish] Anthropic status:", apiRes.status);
+    console.log("[generate-wish] Anthropic response:", apiText.slice(0, 300));
+
     if (!apiRes.ok) {
-      const errText = await apiRes.text();
-      console.error("Anthropic API error:", errText);
-      return res.status(502).json({ success: false, error: "AI service error. Try again." });
+      return res.status(502).json({ success: false, error: `Anthropic error ${apiRes.status}. Check your API key.` });
     }
 
-    const apiData = await apiRes.json();
+    const apiData = JSON.parse(apiText);
     const raw     = apiData.content.map(b => b.text || "").join("").trim();
     const clean   = raw.replace(/```json|```/gi, "").trim();
     const wishes  = JSON.parse(clean);
@@ -253,11 +269,12 @@ Format: ["Wish one here.", "Wish two here.", "Wish three here."]`;
     if (!Array.isArray(wishes) || !wishes.length)
       return res.status(502).json({ success: false, error: "Invalid response from AI. Try again." });
 
+    console.log("[generate-wish] Success! Generated", wishes.length, "wishes");
     res.json({ success: true, wishes: wishes.slice(0, 3) });
 
   } catch (err) {
-    console.error("generate-wish error:", err);
-    res.status(500).json({ success: false, error: "AI generation failed. Try again." });
+    console.error("[generate-wish] Error:", err.message);
+    res.status(500).json({ success: false, error: "AI generation failed: " + err.message });
   }
 });
 

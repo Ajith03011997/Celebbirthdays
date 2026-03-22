@@ -134,38 +134,63 @@ async function deletePost(id, btn) {
   }
 }
 
-// ── Image preview ─────────────────────────────────────────
+// ── Image preview (multi) ─────────────────────────────────
 
-const imgInput  = document.getElementById("fieldImage");
-const uploadArea = document.getElementById("uploadArea");
-const imgPreview = document.getElementById("imgPreview");
-const previewImg = document.getElementById("previewImg");
-const removeImg  = document.getElementById("removeImg");
+const imgInput    = document.getElementById("fieldImage");
+const uploadArea  = document.getElementById("uploadArea");
+const previewGrid = document.getElementById("imgPreviewGrid");
+const previewList = document.getElementById("imgPreviewList");
+const previewCount = document.getElementById("imgPreviewCount");
+const clearAllBtn  = document.getElementById("clearAllImgs");
 
-function showPreview(file) {
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    toast("File too large. Max 5 MB.", "error");
-    imgInput.value = "";
+let selectedFiles = []; // DataTransfer trick to manage file list
+
+function renderPreviews() {
+  previewList.innerHTML = "";
+  if (selectedFiles.length === 0) {
+    previewGrid.style.display = "none";
+    uploadArea.style.display  = "block";
     return;
   }
-  const reader = new FileReader();
-  reader.onload = e => {
-    previewImg.src = e.target.result;
-    imgPreview.style.display = "block";
-    uploadArea.style.display = "none";
-  };
-  reader.readAsDataURL(file);
+  previewGrid.style.display = "block";
+  uploadArea.style.display  = selectedFiles.length >= 5 ? "none" : "block";
+  previewCount.textContent  = selectedFiles.length;
+
+  selectedFiles.forEach((file, i) => {
+    const url  = URL.createObjectURL(file);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--surface)";
+
+    wrap.innerHTML = `
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover" />
+      ${i === 0 ? `<span style="position:absolute;bottom:4px;left:4px;font-size:9px;font-weight:800;background:var(--g-multi);color:#fff;padding:2px 6px;border-radius:100px">MAIN</span>` : ""}
+      <button type="button" data-idx="${i}" style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0">×</button>`;
+
+    wrap.querySelector("button").addEventListener("click", () => {
+      selectedFiles.splice(i, 1);
+      renderPreviews();
+    });
+    previewList.appendChild(wrap);
+  });
+
+  // Sync to file input via DataTransfer
+  const dt = new DataTransfer();
+  selectedFiles.forEach(f => dt.items.add(f));
+  imgInput.files = dt.files;
 }
 
-imgInput.addEventListener("change", () => showPreview(imgInput.files[0]));
+function addFiles(newFiles) {
+  for (const file of newFiles) {
+    if (selectedFiles.length >= 5) { toast("Max 5 images allowed.", "error"); break; }
+    if (file.size > 5 * 1024 * 1024) { toast(`${file.name} is too large (max 5 MB).`, "error"); continue; }
+    selectedFiles.push(file);
+  }
+  renderPreviews();
+}
 
-removeImg.addEventListener("click", () => {
-  imgInput.value = "";
-  previewImg.src = "";
-  imgPreview.style.display = "none";
-  uploadArea.style.display = "block";
-});
+imgInput.addEventListener("change", () => { addFiles(imgInput.files); imgInput.value = ""; });
+
+clearAllBtn.addEventListener("click", () => { selectedFiles = []; renderPreviews(); });
 
 // Drag & drop
 uploadArea.addEventListener("dragover", e => { e.preventDefault(); uploadArea.classList.add("dragging"); });
@@ -173,10 +198,7 @@ uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("drag
 uploadArea.addEventListener("drop", e => {
   e.preventDefault();
   uploadArea.classList.remove("dragging");
-  if (e.dataTransfer.files.length) {
-    imgInput.files = e.dataTransfer.files;
-    showPreview(imgInput.files[0]);
-  }
+  addFiles(e.dataTransfer.files);
 });
 
 // ── Character count ───────────────────────────────────────
@@ -194,13 +216,12 @@ document.getElementById("addPostForm").addEventListener("submit", async function
   const profession = document.getElementById("fieldProfession").value.trim();
   const date       = document.getElementById("fieldDate").value;
   const wish       = document.getElementById("fieldWish").value.trim();
-  const image      = imgInput.files[0];
 
   if (!name)       return highlightErr("fieldName", "Please enter the celebrity name.");
   if (!profession) return highlightErr("fieldProfession", "Please enter the profession.");
   if (!date)       return highlightErr("fieldDate", "Please select a birthday date.");
   if (!wish)       return highlightErr("fieldWish", "Please write a birthday wish.");
-  if (!image)      return toast("Please upload a celebrity photo.", "error");
+  if (selectedFiles.length === 0) return toast("Please upload at least one photo.", "error");
 
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
@@ -212,7 +233,8 @@ document.getElementById("addPostForm").addEventListener("submit", async function
     fd.append("profession", profession);
     fd.append("date", date);
     fd.append("wish", wish);
-    fd.append("image", image);
+    // Append all selected images under field name "images"
+    selectedFiles.forEach(file => fd.append("images", file));
 
     const json = await fetch("/add-post", { method: "POST", body: fd }).then(r => r.json());
 
@@ -226,10 +248,9 @@ document.getElementById("addPostForm").addEventListener("submit", async function
         document.getElementById("aiStatus").textContent = "";
         document.getElementById("aiVariations").style.display = "none";
         document.getElementById("aiVariationsList").innerHTML = "";
-        imgInput.value = "";
-        previewImg.src = "";
-        imgPreview.style.display = "none";
-        uploadArea.style.display = "block";
+        // Reset multi-image preview
+        selectedFiles = [];
+        renderPreviews();
         document.getElementById("successBanner").style.display = "none";
       }, 2400);
 
@@ -322,7 +343,7 @@ async function generateWish(isRegen = false) {
     console.error("AI error:", err);
     panel.style.display = "none";
     statusEl.textContent = "";
-    toast("AI generation failed. Check your internet or try again.", "error");
+    toast("AI error: " + err.message, "error");
   } finally {
     genBtn.disabled = false;
     genBtn.classList.remove("generating");

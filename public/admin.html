@@ -103,15 +103,19 @@
 
         <!-- Image upload -->
         <div class="field-group">
-          <label class="field-label">Celebrity Photo <span class="req">*</span></label>
+          <label class="field-label">Celebrity Photos <span class="req">*</span> <span style="font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0">(up to 5 images)</span></label>
           <div class="image-upload-area" id="uploadArea">
-            <input type="file" id="fieldImage" accept="image/jpeg,image/png,image/webp" required />
+            <input type="file" id="fieldImage" accept="image/jpeg,image/png,image/webp" multiple required />
             <div class="upload-icon">📷</div>
-            <p class="upload-text"><strong>Click to upload</strong> or drag &amp; drop<br>JPG · PNG · WEBP · Max 5 MB</p>
+            <p class="upload-text"><strong>Click to upload</strong> or drag &amp; drop<br>JPG · PNG · WEBP · Max 5 MB each · Up to 5 photos</p>
           </div>
-          <div class="image-preview" id="imgPreview">
-            <img id="previewImg" src="" alt="Preview" />
-            <button type="button" class="remove-img" id="removeImg" title="Remove">×</button>
+          <!-- Multi-image preview grid -->
+          <div id="imgPreviewGrid" style="display:none;margin-top:12px">
+            <div style="font-size:0.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">
+              <span id="imgPreviewCount">0</span> photo(s) selected — first one is the main photo
+            </div>
+            <div id="imgPreviewList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px"></div>
+            <button type="button" id="clearAllImgs" style="margin-top:10px;padding:5px 14px;background:transparent;border:1px solid rgba(244,63,94,.3);color:var(--rose-light);border-radius:100px;font-size:0.72rem;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕ Clear All</button>
           </div>
         </div>
 

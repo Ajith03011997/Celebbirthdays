@@ -106,17 +106,34 @@ function renderCard(post, isToday = false) {
   const menuId = `sm-${post.id}-${_uid++}`;
   card.className = `card${isToday ? " today-card" : ""}`;
 
+  const images = (post.images && post.images.length) ? post.images : [post.image];
+  const hasMultiple = images.length > 1;
+
   const shortWish = post.wish.length > 230
-    ? post.wish.slice(0, 230).trimEnd() + "…"
+    ? post.wish.slice(0, 230).trimEnd() + "\u2026"
     : post.wish;
 
-  const fallback = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'><rect fill='%23181530' width='400' height='300'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='64'>🎂</text></svg>`;
+  const fallback = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'><rect fill='%23181530' width='400' height='300'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='64'>\u{1F382}</text></svg>`;
+
+  const slides = images.map((src, i) => `
+    <div class="carousel-slide${i === 0 ? " active" : ""}" data-index="${i}">
+      <img src="${esc(src)}" alt="${esc(post.name)}" loading="lazy" onerror="this.src='${fallback}'" />
+    </div>`).join("");
+
+  const dots = hasMultiple ? `
+    <div class="carousel-dots">
+      ${images.map((_, i) => `<span class="carousel-dot${i === 0 ? " active" : ""}" data-i="${i}"></span>`).join("")}
+    </div>` : "";
+
+  const arrows = hasMultiple ? `
+    <button class="carousel-arrow carousel-prev">&#8249;</button>
+    <button class="carousel-arrow carousel-next">&#8250;</button>` : "";
 
   card.innerHTML = `
-    <div class="card-image-wrap">
-      <img src="${esc(post.image)}" alt="${esc(post.name)}" loading="lazy" onerror="this.src='${fallback}'" />
-      ${isToday ? `<span class="card-badge">🎉 Today!</span>` : ""}
-      <span class="card-views-badge">👁 <span class="vc">${post.views || 0}</span></span>
+    <div class="card-image-wrap carousel-wrap">
+      ${slides}${arrows}${dots}
+      ${isToday ? `<span class="card-badge">\u{1F389} Today!</span>` : ""}
+      <span class="card-views-badge">\u{1F441} <span class="vc">${post.views || 0}</span></span>
     </div>
     <div class="card-body">
       <div class="card-profession">${esc(post.profession)}</div>
@@ -136,39 +153,42 @@ function renderCard(post, isToday = false) {
       </div>
     </div>`;
 
-  // Wire events
+  if (hasMultiple) {
+    let current = 0;
+    const slideEls = card.querySelectorAll(".carousel-slide");
+    const dotEls   = card.querySelectorAll(".carousel-dot");
+    function goTo(n) {
+      slideEls[current].classList.remove("active");
+      dotEls[current].classList.remove("active");
+      current = (n + images.length) % images.length;
+      slideEls[current].classList.add("active");
+      dotEls[current].classList.add("active");
+    }
+    card.querySelector(".carousel-prev").addEventListener("click", e => { e.stopPropagation(); goTo(current - 1); });
+    card.querySelector(".carousel-next").addEventListener("click", e => { e.stopPropagation(); goTo(current + 1); });
+    dotEls.forEach((dot, i) => dot.addEventListener("click", e => { e.stopPropagation(); goTo(i); }));
+    let timer = setInterval(() => goTo(current + 1), 3000);
+    card.addEventListener("mouseenter", () => clearInterval(timer));
+    card.addEventListener("mouseleave", () => { timer = setInterval(() => goTo(current + 1), 3000); });
+  }
+
   const copyBtn     = card.querySelector(".btn-copy");
   const shareToggle = card.querySelector(".btn-share-toggle");
   const shareMenu   = card.querySelector(".share-menu");
 
   copyBtn.addEventListener("click", () => copyWish(post.wish, copyBtn));
-
   shareToggle.addEventListener("click", e => {
     e.stopPropagation();
     const wasOpen = shareMenu.classList.contains("open");
-    // close all
     document.querySelectorAll(".share-menu.open").forEach(m => m.classList.remove("open"));
     document.querySelectorAll(".btn-share-toggle.active").forEach(b => b.classList.remove("active"));
-    if (!wasOpen) {
-      shareMenu.classList.add("open");
-      shareToggle.classList.add("active");
-    }
+    if (!wasOpen) { shareMenu.classList.add("open"); shareToggle.classList.add("active"); }
   });
 
-  card.querySelector(".btn-share-wa").addEventListener("click", () => {
-    shareWhatsApp(post.name, post.wish);
-    toast("Opening WhatsApp…", "info");
-  });
-  card.querySelector(".btn-share-fb").addEventListener("click", () => {
-    shareFacebook();
-    toast("Opening Facebook…", "info");
-  });
-  card.querySelector(".btn-share-x").addEventListener("click", () => {
-    shareX(post.name, post.wish);
-    toast("Opening X…", "info");
-  });
+  card.querySelector(".btn-share-wa").addEventListener("click", () => { shareWhatsApp(post.name, post.wish); toast("Opening WhatsApp\u2026", "info"); });
+  card.querySelector(".btn-share-fb").addEventListener("click", () => { shareFacebook(); toast("Opening Facebook\u2026", "info"); });
+  card.querySelector(".btn-share-x").addEventListener("click",  () => { shareX(post.name, post.wish); toast("Opening X\u2026", "info"); });
 
-  // View increment
   if (!hasViewed(post.id)) {
     const counter = card.querySelector(".vc");
     if (counter) counter.textContent = (parseInt(counter.textContent) || 0) + 1;
