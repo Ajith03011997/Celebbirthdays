@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CelebBirthdays — Today's Celebrity Birthday Wishes</title>
+  <meta name="description" content="Discover heartfelt birthday wishes for today's celebrities. Copy, share on WhatsApp, Facebook & X." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-icon">🎂</div>
+      <div>
+        <div class="logo-text">CelebBirthdays</div>
+        <span class="logo-sub">Today's Stars</span>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/admin.html" class="btn-nav btn-nav-gold">✦ Add Birthday</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-orb hero-orb-top"></div>
+  <div class="hero-orb hero-orb-right"></div>
+  <div class="hero-orb hero-orb-left"></div>
+
+  <div style="position:relative;z-index:2">
+    <div class="hero-tag">✨ Celebrating Every Star</div>
+    <h1>
+      <span class="line-plain">Birthday Wishes for</span><br>
+      <span class="line-grad">Today's Celebrities</span>
+    </h1>
+    <p class="hero-desc">Discover heartfelt birthday wishes for your favourite stars. Copy them, share on WhatsApp, Facebook or X — and spread the joy!</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-value" id="statTotal">—</span>
+        <div class="hero-stat-label">Total Celebrities</div>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value" id="statToday">—</span>
+        <div class="hero-stat-label">Birthdays Today</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TODAY'S BIRTHDAYS -->
+<section class="section today-section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">🎉 Today</div>
+        <h2 class="section-title">Birthdays Today</h2>
+      </div>
+      <span class="section-count" id="todayCount"></span>
+    </div>
+    <div class="cards-grid today-grid" id="todayGrid"></div>
+    <div class="empty-state" id="todayEmpty" style="display:none">
+      <span class="empty-icon">🎈</span>
+      <h3>No birthdays today</h3>
+      <p>Check back tomorrow — or <a href="/admin.html">add a celebrity!</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- RECENT POSTS -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">🕓 Latest</div>
+        <h2 class="section-title">Recent Birthday Wishes</h2>
+      </div>
+      <span class="section-count" id="recentCount"></span>
+    </div>
+    <div class="cards-grid" id="recentGrid"></div>
+    <div class="empty-state" id="recentEmpty" style="display:none">
+      <span class="empty-icon">📭</span>
+      <h3>No posts yet</h3>
+      <p>Be the first to <a href="/admin.html">add a celebrity birthday!</a></p>
+    </div>
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+      <button class="btn-load-more" id="loadMoreBtn" onclick="loadMoreRecent()">Load More Posts</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <p>🎂 <strong>CelebBirthdays</strong> — Celebrating stars every day &nbsp;·&nbsp; <a href="/admin.html">Admin Panel</a></p>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="script.js"></script>
+</body>
+</html>

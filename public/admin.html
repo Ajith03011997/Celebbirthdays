@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — CelebBirthdays</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-icon">🎂</div>
+      <div>
+        <div class="logo-text">CelebBirthdays</div>
+        <span class="logo-sub">Admin Panel</span>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/" class="btn-nav btn-nav-ghost">← View Site</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ADMIN HERO BAR -->
+<div style="background:linear-gradient(135deg,#0f0c24 0%,#1a0f3a 50%,#0d1a35 100%);padding:36px 28px 32px;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(168,85,247,.14) 0%,transparent 60%);pointer-events:none"></div>
+  <div style="max-width:1240px;margin:0 auto;position:relative">
+    <div style="font-size:.68rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#c084fc;margin-bottom:8px">⚙️ Dashboard</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.4rem);font-weight:900;color:#f4f0ff">Manage Celebrity Birthdays</h1>
+    <p style="font-size:.9rem;color:rgba(244,240,255,.45);margin-top:6px">Add new posts, manage existing ones, and keep the celebrations going.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="admin-layout">
+
+    <!-- LEFT: ADD FORM -->
+    <div class="admin-form-card">
+      <div class="form-card-header">
+        <h2>🎂 Add New Birthday</h2>
+        <p>Fill all fields and upload a photo</p>
+      </div>
+
+      <form class="admin-form" id="addPostForm" novalidate>
+
+        <div class="field-group">
+          <label class="field-label" for="fieldName">Celebrity Name <span class="req">*</span></label>
+          <input type="text" id="fieldName" class="field-input" placeholder="e.g. Virat Kohli" required maxlength="100" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="fieldProfession">Profession <span class="req">*</span></label>
+          <input type="text" id="fieldProfession" class="field-input" placeholder="e.g. Cricketer, Actor, Singer…" required maxlength="80" list="profList" />
+          <datalist id="profList">
+            <option value="Actor"/><option value="Actress"/><option value="Cricketer"/>
+            <option value="Footballer"/><option value="Singer"/><option value="Director"/>
+            <option value="Politician"/><option value="Entrepreneur"/>
+            <option value="Model"/><option value="Musician"/><option value="Comedian"/>
+          </datalist>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="fieldDate">Birthday Date <span class="req">*</span></label>
+          <input type="date" id="fieldDate" class="field-input" required />
+        </div>
+
+        <!-- Birthday wish with AI generator -->
+        <div class="field-group">
+          <label class="field-label" for="fieldWish">Birthday Wish <span class="req">*</span></label>
+
+          <div class="ai-bar">
+            <span class="ai-bar-label">🤖 AI Generate</span>
+            <select id="aiTone" class="ai-tone-select">
+              <option value="warm">💛 Warm &amp; Heartfelt</option>
+              <option value="funny">😄 Fun &amp; Playful</option>
+              <option value="formal">🎩 Formal &amp; Elegant</option>
+              <option value="inspirational">🌟 Inspirational</option>
+              <option value="fan">🙌 Enthusiastic Fan</option>
+            </select>
+            <button type="button" class="btn-ai-generate" id="btnAiGen" onclick="generateWish()">
+              <span id="aiGenLabel">✨ Generate</span>
+            </button>
+          </div>
+
+          <textarea id="fieldWish" class="field-textarea" placeholder="Write a wish manually — or use AI Generate above…" required maxlength="600" rows="4"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:.7rem">
+            <span id="aiStatus" style="color:#c084fc;font-weight:600"></span>
+            <span style="color:rgba(244,240,255,.35)"><span id="wishCount">0</span>/600</span>
+          </div>
+
+          <div class="ai-variations" id="aiVariations" style="display:none">
+            <div class="ai-variations-header">
+              <span>✨ Pick a wish — click to use</span>
+              <button type="button" class="btn-regen" id="btnRegen" onclick="generateWish(true)">🔄 Regenerate</button>
+            </div>
+            <div id="aiVariationsList"></div>
+          </div>
+        </div>
+
+        <!-- Image upload -->
+        <div class="field-group">
+          <label class="field-label">Celebrity Photo <span class="req">*</span></label>
+          <div class="image-upload-area" id="uploadArea">
+            <input type="file" id="fieldImage" accept="image/jpeg,image/png,image/webp" required />
+            <div class="upload-icon">📷</div>
+            <p class="upload-text"><strong>Click to upload</strong> or drag &amp; drop<br>JPG · PNG · WEBP · Max 5 MB</p>
+          </div>
+          <div class="image-preview" id="imgPreview">
+            <img id="previewImg" src="" alt="Preview" />
+            <button type="button" class="remove-img" id="removeImg" title="Remove">×</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">🎉 Publish Birthday Post</button>
+        <div id="successBanner">✅ Birthday post published successfully!</div>
+
+      </form>
+    </div>
+
+    <!-- RIGHT: POSTS TABLE -->
+    <div class="admin-posts-panel">
+      <div class="panel-header">
+        <h2>📋 All Posts <span id="adminPostCount" style="font-size:.82rem;font-weight:400;color:rgba(244,240,255,.35)"></span></h2>
+        <input type="text" class="panel-search" id="adminSearch" placeholder="🔍 Search by name…" />
+      </div>
+      <div style="overflow-x:auto">
+        <table class="posts-table">
+          <thead>
+            <tr>
+              <th>Photo</th><th>Name</th><th>Profession</th>
+              <th>Birthday</th><th>Views</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody">
+            <tr><td colspan="6" style="text-align:center;padding:44px;color:rgba(244,240,255,.3)">Loading posts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="load-more-wrap" id="adminLoadMoreWrap" style="display:none">
+        <button class="btn-load-more" id="adminLoadMoreBtn" onclick="adminLoadMore()">Load More</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p>🎂 <strong>CelebBirthdays Admin</strong> &nbsp;·&nbsp; <a href="/">View Public Site</a></p>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="admin.js"></script>
+</body>
+</html>
