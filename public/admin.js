@@ -332,45 +332,19 @@ async function generateWish(isRegen = false) {
 }
 
 async function callClaude(name, profession, tone) {
-  const toneGuide = {
-    warm:          "warm, heartfelt, and genuine — like a close friend wishing them",
-    funny:         "fun, playful, and lightly humorous — celebratory and uplifting",
-    formal:        "formal, dignified, and elegant — suitable for a professional tribute",
-    inspirational: "inspirational and motivational — celebrating their journey and future",
-    fan:           "enthusiastic fan-like admiration — full of energy and excitement",
-  };
-
-  const prompt = `Generate exactly 3 unique birthday wish messages for a celebrity named ${name}, who is a ${profession}.
-
-Each wish should be ${toneGuide[tone]}.
-
-Rules:
-- Each wish: 2–4 sentences, 60–120 words each
-- Each must feel distinct — not repetitive
-- Use the celebrity's name naturally in the text
-- No hashtags, no emojis, no bullet points, no numbering
-- Return ONLY a valid JSON array of 3 strings, nothing else
-
-Format: ["Wish one here.", "Wish two here.", "Wish three here."]`;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  // Call our own server — it proxies to Anthropic with the API key securely
+  const res = await fetch("/generate-wish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify({ name, profession, tone }),
   });
 
-  if (!res.ok) throw new Error(`API ${res.status}`);
-
   const data = await res.json();
-  const raw  = data.content.map(b => b.text || "").join("").trim();
-  const clean = raw.replace(/```json|```/gi, "").trim();
-  const arr   = JSON.parse(clean);
-  if (!Array.isArray(arr)) throw new Error("Not an array");
-  return arr.map(w => String(w).trim()).filter(Boolean).slice(0, 3);
+
+  if (!data.success) throw new Error(data.error || "Server error");
+  if (!Array.isArray(data.wishes)) throw new Error("Invalid response");
+
+  return data.wishes;
 }
 
 function useWish(index) {

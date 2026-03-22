@@ -191,6 +191,76 @@ app.delete("/posts/:id", (req, res) => {
   }
 });
 
+// ── POST /generate-wish ─────────────────────────────────
+//    Proxies Anthropic API server-side (avoids CORS/browser blocks)
+app.post("/generate-wish", async (req, res) => {
+  try {
+    const { name, profession, tone } = req.body;
+
+    if (!name || !profession || !tone)
+      return res.status(400).json({ success: false, error: "name, profession and tone are required." });
+
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY)
+      return res.status(500).json({ success: false, error: "ANTHROPIC_API_KEY not set on server." });
+
+    const toneGuide = {
+      warm:          "warm, heartfelt, and genuine — like a close friend wishing them",
+      funny:         "fun, playful, and lightly humorous — celebratory and uplifting",
+      formal:        "formal, dignified, and elegant — suitable for a professional tribute",
+      inspirational: "inspirational and motivational — celebrating their journey and future",
+      fan:           "enthusiastic fan-like admiration — full of energy and excitement",
+    };
+
+    const prompt = `Generate exactly 3 unique birthday wish messages for a celebrity named ${name}, who is a ${profession}.
+
+Each wish should be ${toneGuide[tone] || "warm and heartfelt"}.
+
+Rules:
+- Each wish: 2-4 sentences, 60-120 words each
+- Each must feel distinct — not repetitive
+- Use the celebrity's name naturally in the text
+- No hashtags, no emojis, no bullet points, no numbering
+- Return ONLY a valid JSON array of 3 strings, nothing else
+
+Format: ["Wish one here.", "Wish two here.", "Wish three here."]`;
+
+    const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type":         "application/json",
+        "x-api-key":            ANTHROPIC_KEY,
+        "anthropic-version":    "2023-06-01",
+      },
+      body: JSON.stringify({
+        model:      "claude-opus-4-5",
+        max_tokens: 1024,
+        messages:   [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!apiRes.ok) {
+      const errText = await apiRes.text();
+      console.error("Anthropic API error:", errText);
+      return res.status(502).json({ success: false, error: "AI service error. Try again." });
+    }
+
+    const apiData = await apiRes.json();
+    const raw     = apiData.content.map(b => b.text || "").join("").trim();
+    const clean   = raw.replace(/```json|```/gi, "").trim();
+    const wishes  = JSON.parse(clean);
+
+    if (!Array.isArray(wishes) || !wishes.length)
+      return res.status(502).json({ success: false, error: "Invalid response from AI. Try again." });
+
+    res.json({ success: true, wishes: wishes.slice(0, 3) });
+
+  } catch (err) {
+    console.error("generate-wish error:", err);
+    res.status(500).json({ success: false, error: "AI generation failed. Try again." });
+  }
+});
+
 // ── Start ───────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log("\n🎂  Celebrity Birthdays is running!");
